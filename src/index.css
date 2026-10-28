@@ -5,6 +5,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes signal-waveform-scroll {
+  to { transform: translateX(-210px); }
+}
+
+.signal-waveform-trace {
+  animation: signal-waveform-scroll 4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-waveform-trace { animation: none; }
+}
+
 @theme inline {
     --font-heading: var(--font-mono);
     --font-mono: 'JetBrains Mono Variable', monospace;
@@ -127,4 +139,25 @@
   html {
     @apply font-mono;
     }
+}
+
+@keyframes rc-bode-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes rc-bode-marker-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rc-bode-trace {
+    stroke-dasharray: 1;
+    animation: rc-bode-draw 800ms ease-out both;
+  }
+
+  .rc-bode-marker {
+    animation: rc-bode-marker-reveal 150ms ease-out 800ms both;
+  }
 }

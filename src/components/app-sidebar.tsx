@@ -38,7 +38,7 @@ const data = {
     {
       title: "Opamps",
       url: "#",
-      items: [{ title: "Gain Calculator", url: "#" }],
+      items: [{ title: "Gain Calculator", url: "/opamps/gain" }],
     },
     {
       title: "Passives",

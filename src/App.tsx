@@ -2,7 +2,8 @@ import { Link, Route, Routes } from "react-router"
 import SignalConversion from "@/pages/signal-conversion"
 import PassiveRcFilters from "@/pages/passive-rc-filters"
 import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
+import OpampGain from "@/pages/opamp-gain"
 
 export default function App() {
   return (
@@ -11,7 +12,7 @@ export default function App() {
 
       <main className="min-w-0 flex-1">
         <header className="flex h-14 items-center gap-3 border-b px-4">
-          <SidebarTrigger />
+          {/* <SidebarTrigger /> */}
           <h1 className="font-semibold">PCB Tools</h1>
         </header>
 
@@ -33,6 +34,7 @@ export default function App() {
               element={<SignalConversion />}
             />
             <Route path="/filters/passive-rc" element={<PassiveRcFilters />} />
+            <Route path="/opamps/gain" element={<OpampGain />} />
             <Route
               path="*"
               element={

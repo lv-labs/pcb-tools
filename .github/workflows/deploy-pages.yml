@@ -21,23 +21,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
           node-version: '24'
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Check types
-        run: npm run check
+        run: pnpm exec tsc -b --noEmit
 
       - name: Test calculators
-        run: npm test
+        run: node --experimental-strip-types --test tests/*.test.ts
 
       - name: Build site
-        run: npm run build
+        run: pnpm build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
