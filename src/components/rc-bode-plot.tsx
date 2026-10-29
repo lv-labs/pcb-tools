@@ -18,9 +18,13 @@ const phaseY = (degrees: number, highPass: boolean) =>
 export function RcBodePlot({
   cutoff: inputCutoff,
   highPass,
+  gainDb = 0,
+  inverting = false,
 }: {
   cutoff: number | null
   highPass: boolean
+  gainDb?: number
+  inverting?: boolean
 }) {
   const id = useId()
   const [cursor, setCursor] = useState<number | null>(null)
@@ -30,7 +34,12 @@ export function RcBodePlot({
     const timeout = window.setTimeout(() => setCutoff(inputCutoff), 400)
     return () => window.clearTimeout(timeout)
   }, [inputCutoff])
-  const valid = cutoff !== null && Number.isFinite(cutoff) && cutoff > 0
+  const valid =
+    cutoff !== null &&
+    Number.isFinite(cutoff) &&
+    cutoff > 0 &&
+    Number.isFinite(gainDb)
+  const phaseOffset = inverting ? 180 : 0
   const maxDecade = Math.max(2, Math.log10(40000 / (valid ? cutoff : 1)))
   const span = maxDecade + 2
   const x = (decade: number) => left + ((decade + 2) / span) * width
@@ -96,7 +105,7 @@ export function RcBodePlot({
           <>
             <div className="overflow-x-auto rounded-lg border bg-muted/20">
               <svg
-                key={`${cutoff}-${highPass}`}
+                key={`${cutoff}-${highPass}-${gainDb}-${inverting}`}
                 viewBox="0 0 724 456"
                 className="mx-auto block w-full min-w-[540px]"
                 role="img"
@@ -106,11 +115,14 @@ export function RcBodePlot({
                   {highPass ? "High-pass" : "Low-pass"} filter Bode plot
                 </title>
                 <desc id={`${id}-description`}>
-                  Actual cutoff {formatFrequency(cutoff)}. Magnitude is −3.01 dB
-                  and phase is {cutoffPhase} degrees at cutoff.
-                  {highPass
-                    ? "Magnitude rises at 20 dB per decade toward 0 dB. Phase falls from +90 to 0 degrees."
-                    : "Magnitude falls from 0 dB at 20 dB per decade. Phase falls from 0 to −90 degrees."}
+                  Actual cutoff {formatFrequency(cutoff)}. Magnitude is{" "}
+                  {(gainDb - 10 * Math.log10(2)).toFixed(2)} dB and phase is{" "}
+                  {cutoffPhase + phaseOffset} degrees at cutoff.
+                  {inverting
+                    ? "Inverting low-pass: phase falls from +180 to +90 degrees; magnitude falls at 20 dB per decade."
+                    : highPass
+                      ? "Magnitude rises at 20 dB per decade toward 0 dB. Phase falls from +90 to 0 degrees."
+                      : "Magnitude falls from 0 dB at 20 dB per decade. Phase falls from 0 to −90 degrees."}
                 </desc>
                 <g fill="none" className="stroke-border" strokeWidth="1">
                   {minorDecades.map((decade) => (
@@ -149,12 +161,12 @@ export function RcBodePlot({
                   </text>
                   {magnitudeTicks.map((db) => (
                     <text
-                      key={db}
+                      key={Number((db + gainDb).toFixed(2))}
                       x={left - 12}
                       y={magnitudeY(db) + 4}
                       textAnchor="end"
                     >
-                      {db}
+                      {Number((db + gainDb).toFixed(2))}
                     </text>
                   ))}
                   {phaseTicks.map((phase) => (
@@ -164,8 +176,8 @@ export function RcBodePlot({
                       y={phaseY(phase, highPass) + 4}
                       textAnchor="end"
                     >
-                      {phase > 0 ? "+" : ""}
-                      {phase}°
+                      {phase + phaseOffset > 0 ? "+" : ""}
+                      {phase + phaseOffset}°
                     </text>
                   ))}
                   {decades.map((decade) => (
@@ -249,8 +261,8 @@ export function RcBodePlot({
                       fontSize="12"
                     >
                       {frequencyLabel(cursorDecade)} ·{" "}
-                      {cursorResponse.magnitude.toFixed(2)} dB ·{" "}
-                      {cursorResponse.phase.toFixed(1)}°
+                      {(cursorResponse.magnitude + gainDb).toFixed(2)} dB ·{" "}
+                      {(cursorResponse.phase + phaseOffset).toFixed(1)}°
                     </text>
                   </g>
                 )}
@@ -294,8 +306,11 @@ export function RcBodePlot({
               </svg>
             </div>
             <CardDescription className="mt-4">
-              At cutoff: −3.01 dB · {highPass ? "+45°" : "−45°"}. Ideal source
-              and unloaded output; component tolerances are not included.
+              At cutoff: {(gainDb - 10 * Math.log10(2)).toFixed(2)} dB ·{" "}
+              {cutoffPhase + phaseOffset}°.
+              {inverting
+                ? " Phase includes inversion (+180° is equivalent to −180°). Ideal op-amp; bandwidth, output limits and component tolerances are not included."
+                : " Ideal source and unloaded output; component tolerances are not included."}
             </CardDescription>
           </>
         ) : (

@@ -5,6 +5,8 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import OpampGain from "@/pages/opamp-gain"
 
+import ActiveLowPass from "@/pages/active-low-pass"
+
 export default function App() {
   return (
     <SidebarProvider>
@@ -32,6 +34,10 @@ export default function App() {
             <Route
               path="/audio/signal-conversion"
               element={<SignalConversion />}
+            />
+            <Route
+              path="/filters/active-low-pass"
+              element={<ActiveLowPass />}
             />
             <Route path="/filters/passive-rc" element={<PassiveRcFilters />} />
             <Route path="/opamps/gain" element={<OpampGain />} />

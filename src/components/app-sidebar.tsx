@@ -32,7 +32,7 @@ const data = {
       url: "#",
       items: [
         { title: "Passive RC Filters", url: "/filters/passive-rc" },
-        { title: "Active Filters", url: "#" },
+        { title: "Active Low-pass Filter", url: "/filters/active-low-pass" },
       ],
     },
     {
