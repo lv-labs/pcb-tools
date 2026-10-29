@@ -12,14 +12,8 @@ import { formatFrequency, rcResponse } from "@/lib/passive-rc-filters"
 const left = 72
 const right = 652
 const width = right - left
-const x = (decade: number) => left + ((decade + 2) / 4) * width
-const magnitudeY = (db: number) => 48 + (-db / 45) * 155
 const phaseY = (degrees: number, highPass: boolean) =>
   267 + ((highPass ? 90 - degrees : -degrees) / 90) * 120
-const decades = [-2, -1, 0, 1, 2]
-const minorDecades = [-2, -1, 0, 1].flatMap((decade) =>
-  [2, 3, 4, 5, 6, 7, 8, 9].map((multiplier) => decade + Math.log10(multiplier))
-)
 
 export function RcBodePlot({
   cutoff: inputCutoff,
@@ -29,6 +23,7 @@ export function RcBodePlot({
   highPass: boolean
 }) {
   const id = useId()
+  const [cursor, setCursor] = useState<number | null>(null)
   const [cutoff, setCutoff] = useState(inputCutoff)
   useEffect(() => {
     // Keep the last plot while typing, then redraw once the input settles.
@@ -36,8 +31,38 @@ export function RcBodePlot({
     return () => window.clearTimeout(timeout)
   }, [inputCutoff])
   const valid = cutoff !== null && Number.isFinite(cutoff) && cutoff > 0
+  const maxDecade = Math.max(2, Math.log10(40000 / (valid ? cutoff : 1)))
+  const span = maxDecade + 2
+  const x = (decade: number) => left + ((decade + 2) / span) * width
+  const decades = Array.from(
+    { length: 5 },
+    (_, index) => -2 + (index / 4) * span
+  )
+  const minorDecades = Array.from(
+    { length: Math.ceil(span) },
+    (_, index) => index - 2
+  )
+    .flatMap((decade) =>
+      [1, 2, 3, 4, 5, 6, 7, 8, 9].map(
+        (multiplier) => decade + Math.log10(multiplier)
+      )
+    )
+    .filter((decade) => decade <= maxDecade)
+  const magnitudeFloor = Math.min(
+    -45,
+    Math.floor(rcResponse(10 ** maxDecade, highPass)!.magnitude / 10) * 10
+  )
+  const magnitudeY = (db: number) => 48 + (db / magnitudeFloor) * 155
+  const magnitudeStep = Math.ceil(-magnitudeFloor / 50) * 10
+  const magnitudeTicks = Array.from(
+    { length: Math.floor(-magnitudeFloor / magnitudeStep) + 1 },
+    (_, index) => -index * magnitudeStep
+  )
+  const cursorDecade = cursor === null ? null : -2 + cursor * span
+  const cursorResponse =
+    cursorDecade === null ? null : rcResponse(10 ** cursorDecade, highPass)
   const points = Array.from({ length: 241 }, (_, index) => {
-    const decade = -2 + index / 60
+    const decade = -2 + (index / 240) * span
     return { x: x(decade), ...rcResponse(10 ** decade, highPass)! }
   })
   const path = (phase: boolean) =>
@@ -62,7 +87,8 @@ export function RcBodePlot({
         <CardTitle>Bode plot</CardTitle>
         <CardDescription>
           Magnitude and phase from the current R and C values. Logarithmic
-          frequency axis, from 0.01× to 100× the actual cutoff.
+          frequency axis, from 0.01× cutoff to at least 40 kHz (or 100× cutoff,
+          whichever is higher). Hover over either graph to inspect the response.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -100,7 +126,7 @@ export function RcBodePlot({
                       d={`M${x(decade)} 48V203 M${x(decade)} 267V387`}
                     />
                   ))}
-                  {[0, -10, -20, -30, -40].map((db) => (
+                  {magnitudeTicks.map((db) => (
                     <path key={db} d={`M${left} ${magnitudeY(db)}H${right}`} />
                   ))}
                   {phaseTicks.map((phase) => (
@@ -121,7 +147,7 @@ export function RcBodePlot({
                   <text x={left} y="245">
                     PHASE · °
                   </text>
-                  {[0, -10, -20, -30, -40].map((db) => (
+                  {magnitudeTicks.map((db) => (
                     <text
                       key={db}
                       x={left - 12}
@@ -194,6 +220,68 @@ export function RcBodePlot({
                   r="4"
                   className="rc-bode-marker fill-amber-600 dark:fill-amber-400"
                 />
+                {cursorDecade !== null && cursorResponse && (
+                  <g pointerEvents="none">
+                    <path
+                      d={`M${x(cursorDecade)} 48V203 M${x(cursorDecade)} 267V387`}
+                      className="stroke-foreground/50"
+                      strokeDasharray="3 4"
+                    />
+                    <circle
+                      cx={x(cursorDecade)}
+                      cy={magnitudeY(cursorResponse.magnitude)}
+                      r="5"
+                      className="fill-sky-600 stroke-background dark:fill-sky-400"
+                      strokeWidth="2"
+                    />
+                    <circle
+                      cx={x(cursorDecade)}
+                      cy={phaseY(cursorResponse.phase, highPass)}
+                      r="5"
+                      className="fill-amber-600 stroke-background dark:fill-amber-400"
+                      strokeWidth="2"
+                    />
+                    <text
+                      x={right}
+                      y="245"
+                      textAnchor="end"
+                      className="fill-foreground"
+                      fontSize="12"
+                    >
+                      {frequencyLabel(cursorDecade)} ·{" "}
+                      {cursorResponse.magnitude.toFixed(2)} dB ·{" "}
+                      {cursorResponse.phase.toFixed(1)}°
+                    </text>
+                  </g>
+                )}
+                {[
+                  { top: 48, height: 155 },
+                  { top: 267, height: 120 },
+                ].map(({ top, height }) => (
+                  <rect
+                    key={top}
+                    x={left}
+                    y={top}
+                    width={width}
+                    height={height}
+                    fill="transparent"
+                    className="cursor-crosshair"
+                    onPointerMove={(event) => {
+                      const bounds = event.currentTarget.getBoundingClientRect()
+                      setCursor(
+                        Math.max(
+                          0,
+                          Math.min(
+                            1,
+                            (event.clientX - bounds.left) / bounds.width
+                          )
+                        )
+                      )
+                    }}
+                    onPointerLeave={() => setCursor(null)}
+                    onPointerCancel={() => setCursor(null)}
+                  />
+                ))}
                 <text
                   x={right}
                   y="26"
